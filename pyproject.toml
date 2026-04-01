@@ -1,0 +1,27 @@
+# ABOUTME: Project metadata and tool configuration for fzfLAUNCHER.
+# ABOUTME: Configures pytest markers and ruff settings.
+
+[tool.pytest.ini_options]
+markers = [
+    "one_off(issue): One-off test tied to a specific issue",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+]
+ignore = [
+    "E501",  # line too long - handled by formatter
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["fzflauncher"]

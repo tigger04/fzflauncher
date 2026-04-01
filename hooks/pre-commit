@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# ABOUTME: Project-level pre-commit hook for fzfLAUNCHER.
+# ABOUTME: Chains to global hooks, then runs ruff lint and format checks on staged .py files.
+
+set -euo pipefail
+
+# Chain to global hook first — project hooks must not override global hooks
+if global_hooks_path="$(git config --global core.hooksPath 2>/dev/null)"; then
+    if [[ -x "$global_hooks_path/${0##*/}" ]]; then
+        "$global_hooks_path/${0##*/}"
+    fi
+fi
+
+# Project-specific checks below
+
+# Get staged .py files
+staged_py_files=()
+while IFS= read -r -d '' file; do
+    staged_py_files+=("$file")
+done < <(git diff --cached --name-only --diff-filter=ACM -z -- '*.py')
+
+if [[ ${#staged_py_files[@]} -eq 0 ]]; then
+    exit 0
+fi
+
+# Resolve project root and ruff path
+project_root="$(git rev-parse --show-toplevel)"
+ruff="${project_root}/.venv/bin/ruff"
+
+if [[ ! -x "$ruff" ]]; then
+    echo "Error: ruff not found at ${ruff}" >&2
+    echo "Run 'make install' first." >&2
+    exit 1
+fi
+
+# Lint check
+if ! "$ruff" check "${staged_py_files[@]}"; then
+    echo "" >&2
+    echo "Ruff lint check failed. Fix the issues above before committing." >&2
+    exit 1
+fi
+
+# Format check
+if ! "$ruff" format --check "${staged_py_files[@]}"; then
+    echo "" >&2
+    echo "Ruff format check failed. Run 'make fmt' then re-stage." >&2
+    exit 1
+fi

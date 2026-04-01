@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# ABOUTME: Shell shim for fzfLAUNCHER.
+# ABOUTME: Activates the project venv and delegates to the Python entry point.
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# Resolve symlinks to find the real project directory
+SCRIPT_SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "${SCRIPT_SOURCE}" ]]; do
+    SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_SOURCE}")" && pwd)"
+    SCRIPT_SOURCE="$(readlink "${SCRIPT_SOURCE}")"
+    # Handle relative symlinks
+    [[ "${SCRIPT_SOURCE}" != /* ]] && SCRIPT_SOURCE="${SCRIPT_DIR}/${SCRIPT_SOURCE}"
+done
+SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_SOURCE}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+VENV_DIR="${PROJECT_DIR}/.venv"
+
+if [[ ! -d "${VENV_DIR}" ]]; then
+    echo "Error: Virtual environment not found at ${VENV_DIR}" >&2
+    echo "Run 'make install' from ${PROJECT_DIR} first." >&2
+    exit 1
+fi
+
+# shellcheck source=/dev/null
+source "${VENV_DIR}/bin/activate"
+
+export PYTHONPATH="${PROJECT_DIR}/src${PYTHONPATH:+:$PYTHONPATH}"
+
+exec python -m fzflauncher "$@"
