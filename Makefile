@@ -37,7 +37,7 @@ test: $(VENV)
 	$(PYTEST) tests/regression/ -v
 
 test-manual: build
-	PYTHONPATH=src $(PYTHON) -c "from PySide6.QtWidgets import QApplication; from fzflauncher.app import LauncherWindow; from fzflauncher.config import load_config; app = QApplication([]); win = LauncherWindow(load_config()); win.show(); app.exec()"
+	PYTHONPATH=src $(PYTHON) -m fzflauncher
 
 test-one-off: $(VENV)
 ifdef ISSUE

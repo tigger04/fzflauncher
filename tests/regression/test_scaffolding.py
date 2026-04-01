@@ -19,7 +19,9 @@ class TestShimConformance:
             capture_output=True,
             text=True,
         )
-        assert result.returncode == 0, f"ShellCheck failed:\n{result.stdout}\n{result.stderr}"
+        assert result.returncode == 0, (
+            f"ShellCheck failed:\n{result.stdout}\n{result.stderr}"
+        )
 
     def test_shim_has_bash_shebang_RT1_3(self, shim_path):
         """RT-1.3: Shell shim uses #!/usr/bin/env bash shebang."""

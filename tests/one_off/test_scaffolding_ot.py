@@ -128,7 +128,9 @@ class TestMakefileTargetFunctionality:
             capture_output=True,
             text=True,
         )
-        assert help_result.returncode == 0, f"fzflauncher --help failed:\n{help_result.stderr}"
+        assert help_result.returncode == 0, (
+            f"fzflauncher --help failed:\n{help_result.stderr}"
+        )
 
     @pytest.mark.one_off(issue="#1")
     def test_make_uninstall_removes_symlink_OT1_7(self):
@@ -209,7 +211,9 @@ class TestPreCommitHooks:
                 capture_output=True,
                 text=True,
             )
-            assert result.returncode != 0, "Hook should have rejected formatting violation"
+            assert result.returncode != 0, (
+                "Hook should have rejected formatting violation"
+            )
         finally:
             subprocess.run(
                 ["git", "reset", "HEAD", str(bad_file)],
