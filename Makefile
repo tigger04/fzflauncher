@@ -8,7 +8,7 @@ PYTEST := $(VENV)/bin/pytest
 RUFF := $(VENV)/bin/ruff
 SYMLINK := $(HOME)/.local/bin/fzflauncher
 
-.PHONY: init build install uninstall test test-one-off lint fmt release sync clean help
+.PHONY: init build install uninstall test test-manual test-one-off lint fmt release sync clean help
 
 $(VENV):
 	python3 -m venv $(VENV)
@@ -35,6 +35,9 @@ uninstall:
 
 test: $(VENV)
 	$(PYTEST) tests/regression/ -v
+
+test-manual: build
+	PYTHONPATH=src $(PYTHON) -c "from PySide6.QtWidgets import QApplication; from fzflauncher.app import LauncherWindow; from fzflauncher.config import load_config; app = QApplication([]); win = LauncherWindow(load_config()); win.show(); app.exec()"
 
 test-one-off: $(VENV)
 ifdef ISSUE
@@ -68,6 +71,7 @@ help:
 	@echo "  install       Install dependencies, hooks, and symlink to ~/.local/bin"
 	@echo "  uninstall     Remove symlink from ~/.local/bin"
 	@echo "  test          Run regression tests"
+	@echo "  test-manual   Launch window for manual UT verification (UT-4.1-4.4)"
 	@echo "  test-one-off  Run one-off tests (ISSUE=N to filter)"
 	@echo "  lint          Check code with ruff"
 	@echo "  fmt           Format code with ruff"
