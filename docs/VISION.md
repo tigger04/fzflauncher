@@ -1,4 +1,4 @@
-<!-- Version: 0.1 | Last updated: 2026-04-01 -->
+<!-- Version: 0.2 | Last updated: 2026-04-01 -->
 
 # fzfLAUNCHER — Vision
 
@@ -21,7 +21,7 @@ What's missing is a launcher that:
 
 - Starts instantly
 - Uses a familiar, proven fuzzy-matching interface (fzf)
-- Launches apps, scripts, and directories with equal ease
+- Launches applications with minimal friction (scripts, directories in future)
 - Is configurable via plain text files
 - Is open-source and hackable
 
@@ -36,7 +36,7 @@ What's missing is a launcher that:
    are all user-configurable via a single config file.
 5. **Scriptable** — every action the GUI performs can also be performed from
    the command line. The GUI is a convenience layer, not a requirement.
-6. **Minimal dependencies** — Python 3.12+, PySide6, fzf. Nothing else.
+6. **Minimal dependencies** — Python 3.12+, PySide6, PyYAML, fzf. Nothing else.
 
 ## Non-Goals
 
@@ -48,16 +48,21 @@ What's missing is a launcher that:
 
 ## Launch Targets
 
-The launcher discovers and presents the following target types:
+### v0.1 (MVP)
 
 | Type | Source | Launch method |
 |------|--------|---------------|
 | Applications | `/Applications/`, `~/Applications/`, configurable paths | `open -a` |
+
+### Future versions
+
+| Type | Source | Launch method |
+|------|--------|---------------|
 | Scripts | User-configured directories (e.g. `~/.local/bin/`) | Direct execution |
 | Directories | User-configured list | `open` (Finder) |
 | Custom entries | Config file (label → command mappings) | Shell execution |
-
-Future candidates (post-v1): bookmarks/URLs, SSH hosts, recent documents.
+| Bookmarks/URLs | Config file or browser integration | `open` (default browser) |
+| SSH hosts | `~/.ssh/config` | Terminal session |
 
 ## User Experience
 
@@ -103,3 +108,12 @@ fzfLAUNCHER is successful when:
 ## Licence
 
 MIT — Copyright Taḋg Paul
+
+---
+
+## Changelog
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 0.1 | 2026-04-01 | Initial draft |
+| 0.2 | 2026-04-01 | Scope to apps-only MVP; YAML config; add future target roadmap |

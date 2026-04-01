@@ -1,12 +1,12 @@
-<!-- Version: 0.1 | Last updated: 2026-04-01 -->
+<!-- Version: 0.2 | Last updated: 2026-04-01 -->
 
 # fzfLAUNCHER — Implementation Plan
 
 ## Overview
 
-The implementation is divided into five phases, each delivering a testable
-increment. Phases 1–3 produce a functional launcher. Phases 4–5 add polish
-and distribution.
+The implementation is divided into phases, each delivering a testable
+increment. **Phases 1–3 deliver the v0.1 MVP: an application launcher.**
+Later phases add additional target types, polish, and distribution.
 
 Each phase will be tracked as one or more GitHub issues with acceptance
 criteria per our standard process.
@@ -29,9 +29,8 @@ criteria per our standard process.
       launch.py                # launch dispatch
       app.py                   # PySide6 application
       terminal.py              # embedded terminal / fzf host
-      preview.py               # fzf preview handler
   config/
-      default.conf             # default configuration template
+      default.yaml             # default configuration template
   tests/
       regression/
       one_off/
@@ -46,36 +45,29 @@ criteria per our standard process.
   `lint`, `fmt`, `release`, `sync`
 - Configuration system:
   - Default config embedded/shipped with the project
-  - User config at `~/.config/fzflauncher/config.toml`
+  - User config at `~/.config/fzflauncher/config.yaml`
   - User config overrides defaults; missing keys fall back to defaults
   - Validation on load with clear error messages
-- Config schema (TOML):
-  ```toml
-  [paths]
-  applications = ["/Applications", "~/Applications"]
-  scripts = ["~/.local/bin"]
-  directories = ["~/Documents", "~/Projects"]
+- Config schema (YAML) — v0.1 MVP fields only:
+  ```yaml
+  paths:
+    applications:
+      - /Applications
+      - ~/Applications
 
-  [display]
-  width = 80          # columns
-  height = 20         # rows
-  opacity = 0.95
-  position = "center" # center | top | custom
-  x_offset = 0        # only used if position = "custom"
-  y_offset = 0
+  display:
+    width: 80           # columns
+    height: 20          # rows
+    opacity: 0.95
+    position: center    # center | top | custom
+    x_offset: 0         # only used if position = custom
+    y_offset: 0
 
-  [fzf]
-  options = "--reverse --border --margin=1,2"
-  preview = true
-  preview_command = ""  # empty = built-in preview
+  fzf:
+    options: "--reverse --border --margin=1,2"
 
-  [hotkey]
-  global = "alt+space"
-
-  [custom]
-  # label = "command"
-  # e.g.:
-  # "Edit Hosts" = "sudo -e /etc/hosts"
+  hotkey:
+    global: alt+space
   ```
 - Linting: Ruff
 - Formatting: Ruff
@@ -93,10 +85,10 @@ None — this phase has no external blockers.
 
 ---
 
-## Phase 2: Target Discovery
+## Phase 2: Application Discovery
 
-**Goal:** Scan the filesystem for launchable targets and present them as a
-structured list suitable for piping to fzf.
+**Goal:** Scan the filesystem for `.app` bundles and present them as a list
+suitable for piping to fzf.
 
 ### Deliverables
 
@@ -105,20 +97,11 @@ structured list suitable for piping to fzf.
   - Extract display name from `Info.plist` (CFBundleName) with fallback to
     directory name
   - Exclude system/internal apps via configurable ignore patterns
-- **Script discovery:**
-  - Scan configured paths for executable files
-  - Respect `$PATH` ordering for deduplication
-  - Skip non-executable files, hidden files
-- **Directory discovery:**
-  - Read configured directory list
-  - Validate paths exist; warn (don't fail) for missing paths
-- **Custom entries:**
-  - Load from `[custom]` config section
-  - No discovery needed — user specifies label and command
-- **Unified target list:**
-  - Each entry: `type`, `display_name`, `path_or_command`
-  - Formatted for fzf: `[app] Firefox`, `[script] backup.sh`, `[dir] ~/Projects`
-  - Sorted: custom entries first, then apps, scripts, directories (configurable?)
+- **Target list:**
+  - Each entry: `display_name`, `path`
+  - Formatted for fzf: one application name per line
+  - Sorted alphabetically
+  - Deduplication: same app in multiple paths appears once
 - **Caching (optional, decide during implementation):**
   - Cache discovery results with filesystem mtime invalidation
   - Or just re-scan on every invocation if it's fast enough (<100ms)
@@ -129,16 +112,14 @@ structured list suitable for piping to fzf.
 
 ### Estimated issues
 
-- Application discovery (1 issue)
-- Script and directory discovery (1 issue)
-- Unified target list formatting (1 issue)
+- Application discovery and formatting (1 issue)
 
 ---
 
-## Phase 3: GUI Shell & fzf Integration
+## Phase 3: GUI Shell & fzf Integration (MVP complete)
 
-**Goal:** A PySide6 window hosting a pseudo-terminal that runs fzf with the
-discovered targets. Selecting an entry launches it.
+**Goal:** A PySide6 window hosting fzf with the discovered applications.
+Selecting an entry launches it. **This completes the v0.1 MVP.**
 
 ### Deliverables
 
@@ -157,49 +138,93 @@ discovered targets. Selecting an entry launches it.
   - Must handle fzf's TUI correctly: cursor movement, colour codes, line
     clearing
 - **fzf subprocess:**
-  - Pipe discovered targets to fzf's stdin
+  - Pipe discovered application names to fzf's stdin
   - Read selected entry from fzf's stdout
   - Pass configured fzf options
   - Handle: user selects (exit 0), user cancels (exit 130), fzf error
-- **Launch dispatch:**
-  - Parse selected entry to determine type and target
-  - Dispatch to appropriate launch method (see Phase 2 target types)
+- **Application launch:**
+  - Map selected display name back to `.app` path
+  - Launch via `open -a`
   - Window dismisses before/during launch
-- **Preview pane (if `preview = true`):**
-  - Apps: name, version, bundle ID
-  - Scripts: first 10 lines (ABOUTME comment + shebang)
-  - Directories: `ls` summary
-  - Custom: the command that will run
 
 ### Risk: Terminal Emulation
 
-Embedding a fully functional terminal emulator that correctly renders fzf is
-the highest-risk component. If QTermWidget is unavailable or too heavy, the
-fallback is:
+Embedding a terminal emulator that correctly renders fzf is the highest-risk
+component. fzf is a full TUI — it uses ANSI escape codes for cursor movement,
+colour, line clearing, and screen redraws. A Qt widget doesn't handle any of
+that natively, so we need to bridge that gap.
 
-1. Pipe targets to fzf running in an external minimal terminal window
-   (kitty `--class`, alacritty `--class`) as a subprocess
-2. PySide6 becomes the orchestrator rather than the host
-3. This trades some visual polish for reliability
+**Approach options (to be spiked in Phase 3):**
 
-**Decision point:** Spike the embedded terminal approach first. If it takes
-more than a day to get fzf rendering correctly, fall back to the external
-terminal approach. Document the decision.
+- a) QTermWidget — a Qt terminal widget, if available and maintained for PySide6
+- b) Custom widget + pty — `QPlainTextEdit` or custom `QWidget` with a pty
+  backend, parsing ANSI escape sequences ourselves
+- c) Existing Python terminal emulation libraries (e.g. pyte for screen
+  buffer parsing) feeding a Qt widget
+
+The spike determines *which* embedding approach works best, not whether to
+embed. PySide6 with embedded fzf is the project — an external terminal window
+would eliminate the need for PySide6 entirely and is a different product.
 
 ### Dependencies
 
-- Phase 2 (target list)
+- Phase 2 (application list)
 
 ### Estimated issues
 
 - PySide6 window and lifecycle (1 issue)
 - Terminal widget / fzf hosting (1–2 issues, depending on spike outcome)
-- Launch dispatch (1 issue)
-- Preview pane (1 issue)
+- Application launch dispatch (1 issue)
 
 ---
 
-## Phase 4: Global Hotkey & System Integration
+## Phase 4: Additional Target Types
+
+**Goal:** Extend discovery and launch to support scripts, directories, and
+custom entries.
+
+### Deliverables
+
+- **Script discovery:**
+  - New config section: `paths.scripts`
+  - Scan configured paths for executable files
+  - Respect `$PATH` ordering for deduplication
+  - Skip non-executable files, hidden files
+- **Directory targets:**
+  - New config section: `paths.directories`
+  - Read configured directory list
+  - Validate paths exist; warn (don't fail) for missing paths
+  - Launch via `open` (Finder)
+- **Custom entries:**
+  - New config section: `custom` (label → command mappings)
+  - No discovery needed — user specifies label and command
+  - Launch via shell execution
+- **Unified target list:**
+  - Category prefixes in fzf: `[app]`, `[script]`, `[dir]`, `[custom]`
+  - Sorting: custom first, then apps, scripts, directories
+- **Preview pane:**
+  - Apps: name, version, bundle ID from Info.plist
+  - Scripts: shebang + ABOUTME comment
+  - Directories: `ls` summary
+  - Custom: the command that will run
+- **Launch dispatch generalisation:**
+  - `launch.py` dispatch table covers all target types
+  - Commands constructed as lists (never strings) for all types
+
+### Dependencies
+
+- Phase 3 (working MVP)
+
+### Estimated issues
+
+- Script and directory discovery (1 issue)
+- Custom entries and unified formatting (1 issue)
+- Preview pane (1 issue)
+- Launch dispatch for all target types (1 issue)
+
+---
+
+## Phase 5: Global Hotkey & System Integration
 
 **Goal:** Summon and dismiss the launcher with a system-wide hotkey, even when
 fzfLAUNCHER is not the focused application.
@@ -229,7 +254,7 @@ fzfLAUNCHER is not the focused application.
 
 ### Dependencies
 
-- Phase 3 (working GUI)
+- Phase 3 (working MVP); can be done in parallel with Phase 4
 
 ### Estimated issues
 
@@ -239,7 +264,7 @@ fzfLAUNCHER is not the focused application.
 
 ---
 
-## Phase 5: Polish & Distribution
+## Phase 6: Polish & Distribution
 
 **Goal:** Make it installable, reliable, and pleasant.
 
@@ -261,10 +286,13 @@ fzfLAUNCHER is not the focused application.
 - **Accessibility:**
   - VoiceOver support for the target list (if feasible with terminal widget)
   - High-contrast config option
+- **Notarisation (if distributing .app bundles):**
+  - Code signing, hardened runtime, notarytool submission
+  - Deferred unless distribution scope expands beyond Homebrew
 
 ### Dependencies
 
-- Phase 4 (feature-complete)
+- Phases 4 and 5
 
 ### Estimated issues
 
@@ -277,14 +305,17 @@ fzfLAUNCHER is not the focused application.
 
 ## Phase Summary
 
-| Phase | Description | Issues (est.) | Depends on |
-|-------|-------------|---------------|------------|
-| 1 | Scaffolding & configuration | 2 | — |
-| 2 | Target discovery | 3 | Phase 1 |
-| 3 | GUI shell & fzf integration | 4–5 | Phase 2 |
-| 4 | Global hotkey & system integration | 2–3 | Phase 3 |
-| 5 | Polish & distribution | 3–4 | Phase 4 |
-| **Total** | | **14–17** | |
+| Phase | Description | Scope | Issues (est.) | Depends on |
+|-------|-------------|-------|---------------|------------|
+| 1 | Scaffolding & configuration | **MVP** | 2 | — |
+| 2 | Application discovery | **MVP** | 1 | Phase 1 |
+| 3 | GUI shell & fzf integration | **MVP** | 3–4 | Phase 2 |
+| 4 | Additional target types | Post-MVP | 4 | Phase 3 |
+| 5 | Global hotkey & system integration | Post-MVP | 2–3 | Phase 3 |
+| 6 | Polish & distribution | Post-MVP | 3–4 | Phases 4–5 |
+| **Total** | | | **15–18** | |
+
+**v0.1 MVP = Phases 1–3 (~6–7 issues)**
 
 ## Open Questions
 
@@ -295,11 +326,8 @@ These should be resolved during or before the relevant phase:
 2. **Type checking** — mypy or pyright? Decide in Phase 1 based on PySide6
    stub quality.
 3. **Caching** — is discovery fast enough without a cache? Measure in Phase 2.
-4. **Target sorting** — alphabetical within category, or frecency (recent +
-   frequency)? Start with alphabetical, consider frecency in Phase 5.
-5. **Config format** — TOML is proposed. INI is simpler but less expressive.
-   JSON is too noisy. YAML adds a dependency. TOML is in the stdlib since
-   3.11.
+4. **Target sorting** — alphabetical for MVP; frecency (recent + frequency)
+   as a Phase 6 enhancement?
 
 ---
 
@@ -308,3 +336,4 @@ These should be resolved during or before the relevant phase:
 | Version | Date | Changes |
 |---------|------|---------|
 | 0.1 | 2026-04-01 | Initial draft |
+| 0.2 | 2026-04-01 | YAML config; apps-only MVP front-loaded as Phases 1–3; scripts/dirs/custom deferred to Phase 4; added Phase 6 |

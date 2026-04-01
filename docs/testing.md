@@ -1,4 +1,4 @@
-<!-- Version: 0.1 | Last updated: 2026-04-01 -->
+<!-- Version: 0.2 | Last updated: 2026-04-01 -->
 
 # fzfLAUNCHER — Testing Strategy
 
@@ -38,9 +38,9 @@ tests/
 | Layer | Type | What's tested | External deps |
 |-------|------|---------------|---------------|
 | `config.py` | Unit | Parsing, validation, defaults, merging, error messages | None (reads from string/dict in tests) |
-| `discover.py` | Unit + Integration | App/script/dir scanning, deduplication, formatting | Filesystem (via `tmp_path`) |
+| `discover.py` | Unit + Integration | App scanning (v0.1), script/dir scanning (future), deduplication, formatting | Filesystem (via `tmp_path`) |
 | `launch.py` | Unit | Dispatch logic, command construction | `subprocess` mocked at boundary |
-| `preview.py` | Unit | Preview text generation for each target type | Filesystem (via `tmp_path`) |
+| `preview.py` | Unit | Preview text generation for each target type (future) | Filesystem (via `tmp_path`) |
 | `terminal.py` | Integration | fzf subprocess communication, pty management | fzf binary |
 | `app.py` | Integration + UT | Window lifecycle, hotkey, focus handling | PySide6, display |
 
@@ -77,43 +77,51 @@ bundles? Does fzf actually receive and return our formatted entries? Does
 | User override | User config values override defaults |
 | Partial config | Missing sections fall back to defaults |
 | Path expansion | `~` expanded in all path values |
-| Validation | Invalid types, out-of-range values, malformed TOML |
+| Validation | Invalid types, out-of-range values, malformed YAML |
 | Error messages | Each validation failure produces a specific, actionable message |
 
 ### 2. Discovery (`test_discover.py`)
 
-| Area | Conditions to cover |
-|------|-------------------|
-| App discovery | Finds `.app` bundles in configured paths |
-| App naming | Extracts CFBundleName from Info.plist; falls back to dir name |
-| App exclusion | Configured ignore patterns exclude matching apps |
-| Script discovery | Finds executable files in configured paths |
-| Script filtering | Skips non-executable, hidden files |
-| Directory targets | Configured directories included; missing paths warned, not failed |
-| Custom entries | Config-defined entries appear in target list |
-| Deduplication | Same app in multiple paths appears once |
-| Formatting | Output format matches expected fzf input (`[type] name`) |
-| Empty state | No targets found → empty list, no crash |
+v0.1 MVP covers application discovery only. Script, directory, and custom
+entry discovery tests will be added in Phase 4.
+
+| Area | Conditions to cover | Version |
+|------|-------------------|---------|
+| App discovery | Finds `.app` bundles in configured paths | v0.1 |
+| App naming | Extracts CFBundleName from Info.plist; falls back to dir name | v0.1 |
+| App exclusion | Configured ignore patterns exclude matching apps | v0.1 |
+| Deduplication | Same app in multiple paths appears once | v0.1 |
+| Formatting | Output format matches expected fzf input | v0.1 |
+| Empty state | No targets found → empty list, no crash | v0.1 |
+| Script discovery | Finds executable files in configured paths | Future |
+| Script filtering | Skips non-executable, hidden files | Future |
+| Directory targets | Configured directories included; missing paths warned, not failed | Future |
+| Custom entries | Config-defined entries appear in target list | Future |
 
 Tests use `tmp_path` to construct real directory trees with real `.app` bundle
 structures (minimal: `Contents/Info.plist` with `CFBundleName`).
 
 ### 3. Launch dispatch (`test_launch.py`)
 
-| Area | Conditions to cover |
-|------|-------------------|
-| App launch | `.app` targets dispatched via `open -a` |
-| Script launch | Script targets executed directly |
-| Directory launch | Directory targets dispatched via `open` |
-| Custom launch | Custom entries executed via shell |
-| Missing target | Target path no longer exists at launch time → error, not crash |
-| Permission denied | Script not executable → clear error |
-| Command construction | Constructed commands are safe (no injection) |
+v0.1 MVP covers application launching only.
+
+| Area | Conditions to cover | Version |
+|------|-------------------|---------|
+| App launch | `.app` targets dispatched via `open -a` | v0.1 |
+| Missing target | Target path no longer exists at launch time → error, not crash | v0.1 |
+| Command construction | Constructed commands are safe (no injection) | v0.1 |
+| Script launch | Script targets executed directly | Future |
+| Directory launch | Directory targets dispatched via `open` | Future |
+| Custom launch | Custom entries executed via shell | Future |
+| Permission denied | Script not executable → clear error | Future |
 
 `subprocess` is mocked here — we verify the correct command is constructed,
 not that macOS `open` works.
 
-### 4. Preview (`test_preview.py`)
+### 4. Preview (`test_preview.py`) — Future
+
+Not part of v0.1 MVP. Tests will be added alongside the preview feature
+in Phase 4.
 
 | Area | Conditions to cover |
 |------|-------------------|
@@ -234,3 +242,4 @@ UT 001
 | Version | Date | Changes |
 |---------|------|---------|
 | 0.1 | 2026-04-01 | Initial draft |
+| 0.2 | 2026-04-01 | YAML config; scope annotations for v0.1 MVP (apps only); defer preview/script/dir/custom tests |

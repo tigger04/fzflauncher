@@ -1,4 +1,4 @@
-<!-- Version: 0.1 | Last updated: 2026-04-01 -->
+<!-- Version: 0.2 | Last updated: 2026-04-01 -->
 
 # fzfLAUNCHER — Architecture
 
@@ -45,7 +45,7 @@ tested and, if necessary, replaced independently.
 The foundation. All other components depend on it; it depends on nothing.
 
 - Loads default configuration shipped with the project
-- Loads user configuration from `~/.config/fzflauncher/config.toml`
+- Loads user configuration from `~/.config/fzflauncher/config.yaml`
 - Merges user values over defaults (missing keys fall back to defaults)
 - Validates all values on load — type, range, path existence
 - Exposes a frozen dataclass (or similar immutable structure) to consumers
@@ -62,10 +62,10 @@ Pure application logic with no GUI or subprocess dependencies (except
 **`discover.py`** — Target discovery and formatting.
 
 - Accepts a config object
-- Scans configured paths for each target type (apps, scripts, directories)
-- Reads custom entries from config
+- v0.1: scans configured paths for `.app` bundles only
+- Future: scripts, directories, custom entries (see implementation plan Phase 4)
 - Returns a list of `Target` dataclass instances
-- Formats the list as fzf-compatible strings: `[type] display_name`
+- Formats the list as fzf-compatible strings
 - Handles: deduplication, ignore patterns, missing paths (warn, don't fail)
 
 **`launch.py`** — Launch dispatch.
@@ -73,17 +73,18 @@ Pure application logic with no GUI or subprocess dependencies (except
 - Accepts a `Target` and executes the appropriate launch command
 - Dispatch table:
 
-  | Target type | Command |
-  |-------------|---------|
-  | Application | `open -a <path>` |
-  | Script | Direct execution |
-  | Directory | `open <path>` |
-  | Custom | Shell execution of user-defined command |
+  | Target type | Command | Version |
+  |-------------|---------|---------|
+  | Application | `open -a <path>` | v0.1 |
+  | Script | Direct execution | Future |
+  | Directory | `open <path>` | Future |
+  | Custom | Shell execution of user-defined command | Future |
 
 - Constructs commands as lists (never strings) to prevent injection
 - Validates target still exists before launching
 
-**`preview.py`** — Preview text generation for fzf's preview window.
+**`preview.py`** — Preview text generation for fzf's preview window. (Future —
+not part of v0.1 MVP.)
 
 - Accepts a `Target`
 - Returns a string suitable for display in fzf's preview pane
@@ -111,10 +112,11 @@ The presentation layer. Depends on Layers 1 and 2. No business logic here.
 - Captures fzf's selection on exit and passes it to `launch.py`
 - Handles fzf lifecycle: normal exit (selection), cancel (Escape/Ctrl-C), error
 
-**Fallback architecture:** If embedded pty rendering proves unreliable (see
-implementation plan, Phase 3 risk), `terminal.py` will instead launch fzf in
-an external terminal window (kitty/alacritty) and capture its output. The
-interface to `app.py` remains the same — only the internal mechanism changes.
+**Implementation note:** Embedding fzf requires bridging its TUI output (ANSI
+escape codes for cursor, colour, redraws) into a Qt widget. The Phase 3 spike
+will determine the best approach — QTermWidget, custom pty + ANSI parsing, or
+a library like pyte for screen buffer emulation. See the implementation plan
+for details.
 
 ### Shell Shim (`bin/fzflauncher`)
 
@@ -245,7 +247,7 @@ layer diagram.
 | Python 3.12+ | Runtime | Yes |
 | PySide6 | GUI window, widgets, event loop | Yes (GUI mode) |
 | fzf | Fuzzy matching engine | Yes |
-| TOML (stdlib) | Config parsing | Yes (stdlib, no install) |
+| PyYAML | Config parsing | Yes |
 
 No other runtime dependencies. Build/test dependencies (pytest, ruff) are
 development-only.
@@ -255,9 +257,9 @@ development-only.
 - **Command injection:** Launch commands are constructed as lists, never
   strings. `subprocess.run(["open", "-a", path])`, not
   `subprocess.run(f"open -a {path}", shell=True)`.
-- **Custom entries:** User-defined commands in `[custom]` config are executed
-  via shell. This is intentional — the user authored them. They are never
-  sourced from untrusted input.
+- **Custom entries (future):** User-defined commands in config will be
+  executed via shell. This is intentional — the user authors them. They are
+  never sourced from untrusted input.
 - **Path traversal:** Discovery only scans configured paths. It does not
   follow symlinks outside configured directories.
 - **Permissions:** The app requests Accessibility permission (for global
@@ -267,7 +269,7 @@ development-only.
 
 ```
 ~/.config/fzflauncher/
-    config.toml              # user configuration
+    config.yaml              # user configuration
 
 ~/.local/bin/
     fzflauncher              # symlink to bin/fzflauncher (via make install)
@@ -275,7 +277,7 @@ development-only.
 <project>/
     bin/fzflauncher          # shell shim
     src/fzflauncher/         # Python package
-    config/default.conf      # default configuration
+    config/default.yaml      # default configuration
     tests/                   # test suite
     docs/                    # documentation
 ```
@@ -287,3 +289,4 @@ development-only.
 | Version | Date | Changes |
 |---------|------|---------|
 | 0.1 | 2026-04-01 | Initial draft |
+| 0.2 | 2026-04-01 | YAML config; scope annotations for v0.1 MVP (apps only) |
