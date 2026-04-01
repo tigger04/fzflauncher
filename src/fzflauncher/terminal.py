@@ -87,6 +87,7 @@ class TerminalWidget(QWidget):
         fzf_path: str = "fzf",
         rows: int = 20,
         cols: int = 80,
+        font_family: str | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -108,9 +109,11 @@ class TerminalWidget(QWidget):
         self._screen = pyte.Screen(cols, rows)
         self._stream = pyte.ByteStream(self._screen)
 
-        # System monospace font at a legible size
+        # System monospace font at a legible size; override family if provided
         self._font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
         self._font.setPointSize(13)
+        if font_family:
+            self._font.setFamily(font_family)
 
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 

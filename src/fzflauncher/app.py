@@ -21,9 +21,15 @@ logger = logging.getLogger(__name__)
 class LauncherWindow(QMainWindow):
     """Borderless, always-on-top window that hosts the fzf terminal widget."""
 
-    def __init__(self, config: Config, parent: QMainWindow | None = None) -> None:
+    def __init__(
+        self,
+        config: Config,
+        font_family: str | None = None,
+        parent: QMainWindow | None = None,
+    ) -> None:
         super().__init__(parent)
         self._config = config
+        self._font_family = font_family
         self._targets: list[Target] = []
         self._terminal: TerminalWidget | None = None
         self._setup_window()
@@ -36,6 +42,8 @@ class LauncherWindow(QMainWindow):
         # Config width/height are terminal columns/rows — convert to pixels
         font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
         font.setPointSize(13)
+        if self._font_family:
+            font.setFamily(self._font_family)
         fm = QFontMetrics(font)
         self.resize(cfg.width * fm.horizontalAdvance("W"), cfg.height * fm.height())
         self.setWindowOpacity(cfg.opacity)
@@ -76,6 +84,7 @@ class LauncherWindow(QMainWindow):
             fzf_options=cfg.fzf.options,
             rows=cfg.display.height,
             cols=cfg.display.width,
+            font_family=self._font_family,
             parent=container,
         )
         layout.addWidget(self._terminal)

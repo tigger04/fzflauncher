@@ -7,8 +7,10 @@ PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 RUFF := $(VENV)/bin/ruff
 SYMLINK := $(HOME)/.local/bin/fzflauncher
+FONTS_DIR := resources/fonts
+IOSEVKA_REPO ?= $(HOME)/tfont/Iosevka
 
-.PHONY: init build install uninstall test test-manual test-one-off lint fmt release sync clean help
+.PHONY: init build install uninstall test test-manual test-one-off build-fonts lint fmt release sync clean help
 
 $(VENV):
 	python3 -m venv $(VENV)
@@ -46,6 +48,17 @@ else
 	$(PYTEST) tests/one_off/ -v
 endif
 
+build-fonts:
+	@if [ ! -d "$(IOSEVKA_REPO)" ]; then \
+		echo "Iosevka repo not found at $(IOSEVKA_REPO)"; \
+		echo "Clone it with: git clone https://github.com/be5invis/Iosevka $(IOSEVKA_REPO)"; \
+		exit 1; \
+	fi
+	cp "$(FONTS_DIR)/private-build-plans.toml" "$(IOSEVKA_REPO)/"
+	cd "$(IOSEVKA_REPO)" && npm install -q && npm run build -- contents::FzfiraCode
+	cp "$(IOSEVKA_REPO)/dist/FzfiraCode/TTF/"*.ttf "$(FONTS_DIR)/"
+	@echo "Fzfira Code TTFs built in $(FONTS_DIR)/"
+
 lint: $(VENV)
 	$(RUFF) check src/ tests/
 
@@ -73,6 +86,7 @@ help:
 	@echo "  test          Run regression tests"
 	@echo "  test-manual   Launch window for manual UT verification (UT-4.1-4.4)"
 	@echo "  test-one-off  Run one-off tests (ISSUE=N to filter)"
+	@echo "  build-fonts   Build Fzfira Code TTFs (requires Iosevka repo at IOSEVKA_REPO)"
 	@echo "  lint          Check code with ruff"
 	@echo "  fmt           Format code with ruff"
 	@echo "  clean         Remove venv and build artifacts"

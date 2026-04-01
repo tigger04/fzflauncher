@@ -23,6 +23,7 @@ def main():
 
     from fzflauncher.app import LauncherWindow
     from fzflauncher.config import ConfigError, load_config
+    from fzflauncher.fonts import load_bundled_font
 
     try:
         config = load_config()
@@ -31,7 +32,8 @@ def main():
         sys.exit(1)
 
     app = QApplication(sys.argv)
-    window = LauncherWindow(config)
+    font_family = load_bundled_font()
+    window = LauncherWindow(config, font_family=font_family)
     window.show()
     window.launch()
     sys.exit(app.exec())
