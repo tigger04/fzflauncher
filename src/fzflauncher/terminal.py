@@ -14,9 +14,60 @@ import struct
 import termios
 
 import pyte
-from PySide6.QtCore import QSocketNotifier, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QKeyEvent, QPainter
+from PySide6.QtCore import QRect, QSocketNotifier, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QFontDatabase, QKeyEvent, QPainter
 from PySide6.QtWidgets import QWidget
+
+# ---------------------------------------------------------------------------
+# Colour mapping
+# ---------------------------------------------------------------------------
+
+# pyte represents colours as:
+#   - "default" — use the terminal default fg/bg
+#   - a named string ("red", "green", "brown", etc.)
+#   - a 6-char hex string (both 256-colour indices and true colour)
+# "brown" is pyte's name for ANSI colour 3 (dark yellow).
+
+_NAMED_COLOURS: dict[str, QColor] = {
+    "black": QColor(0, 0, 0),
+    "red": QColor(187, 0, 0),
+    "green": QColor(0, 187, 0),
+    "brown": QColor(187, 187, 0),
+    "blue": QColor(0, 0, 187),
+    "magenta": QColor(187, 0, 187),
+    "cyan": QColor(0, 187, 187),
+    "white": QColor(187, 187, 187),
+    "brightblack": QColor(85, 85, 85),
+    "brightred": QColor(255, 85, 85),
+    "brightgreen": QColor(85, 255, 85),
+    "brightbrown": QColor(255, 255, 85),
+    "brightblue": QColor(85, 85, 255),
+    "brightmagenta": QColor(255, 85, 255),
+    "brightcyan": QColor(85, 255, 255),
+    "brightwhite": QColor(255, 255, 255),
+}
+
+_DEFAULT_FG = QColor(187, 187, 187)
+_DEFAULT_BG = QColor(0, 0, 0)
+
+
+def _resolve_colour(colour: str, default: QColor) -> QColor:
+    """Map a pyte colour value to a QColor."""
+    if colour == "default":
+        return default
+    named = _NAMED_COLOURS.get(colour)
+    if named is not None:
+        return named
+    # Hex string from 256-colour index or true colour
+    if len(colour) == 6:
+        try:
+            return QColor(
+                int(colour[0:2], 16), int(colour[2:4], 16), int(colour[4:6], 16)
+            )
+        except ValueError:
+            pass
+    return default
+
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +108,9 @@ class TerminalWidget(QWidget):
         self._screen = pyte.Screen(cols, rows)
         self._stream = pyte.ByteStream(self._screen)
 
-        # Monospace font for rendering
-        self._font = QFont("Menlo", 14)
+        # System monospace font at a legible size
+        self._font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+        self._font.setPointSize(13)
 
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
@@ -238,19 +290,44 @@ class TerminalWidget(QWidget):
             pass
 
     def paintEvent(self, event) -> None:
-        """Render the pyte screen buffer."""
+        """Render the pyte screen buffer with per-character fg/bg/reverse attributes."""
         painter = QPainter(self)
         painter.setFont(self._font)
         metrics = painter.fontMetrics()
+        char_w = metrics.horizontalAdvance("W")
         char_h = metrics.height()
+        ascent = metrics.ascent()
 
-        painter.fillRect(self.rect(), QColor(0, 0, 0))
-        painter.setPen(QColor(255, 255, 255))
+        painter.fillRect(self.rect(), _DEFAULT_BG)
 
-        for row_idx, line in enumerate(self._screen.display):
-            painter.drawText(0, (row_idx + 1) * char_h, line)
+        for row_idx in range(self._rows):
+            row_buf = self._screen.buffer[row_idx]
+            for col_idx in range(self._cols):
+                char = row_buf[col_idx]
+                fg = _resolve_colour(char.fg, _DEFAULT_FG)
+                bg = _resolve_colour(char.bg, _DEFAULT_BG)
+                if char.reverse:
+                    fg, bg = bg, fg
+
+                x = col_idx * char_w
+                y = row_idx * char_h
+                cell_rect = QRect(x, y, char_w, char_h)
+
+                if bg != _DEFAULT_BG:
+                    painter.fillRect(cell_rect, bg)
+
+                if char.data and char.data != " ":
+                    painter.setPen(fg)
+                    painter.drawText(x, y + ascent, char.data)
 
         painter.end()
+
+    @property
+    def cell_width(self) -> int:
+        """Width of a single character cell in pixels."""
+        from PySide6.QtGui import QFontMetrics
+
+        return QFontMetrics(self._font).horizontalAdvance("W")
 
     @property
     def screen(self) -> pyte.Screen:

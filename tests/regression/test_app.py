@@ -1,4 +1,4 @@
-# ABOUTME: Regression tests for PySide6 window and lifecycle (issue #4).
+# ABOUTME: Regression tests for PySide6 window and lifecycle (issues #4, #7).
 # ABOUTME: Uses QT_QPA_PLATFORM=offscreen for headless execution.
 
 from __future__ import annotations
@@ -86,14 +86,18 @@ def test_window_has_stays_on_top_hint_RT4_2(window):
 
 
 def test_window_size_matches_config_RT4_3(qt_app):
-    """RT-4.3: Window size matches display.width and display.height from config."""
-    from PySide6.QtGui import QFont, QFontMetrics
+    """RT-4.3: Window size matches display.width and display.height from config.
+    Updated in #7: uses system fixed font + horizontalAdvance("W") (RT-7.2).
+    """
+    from PySide6.QtGui import QFontDatabase, QFontMetrics
 
     cols, rows = 80, 20
     cfg = make_config(width=cols, height=rows)
     win = LauncherWindow(cfg)
-    fm = QFontMetrics(QFont("Menlo", 14))
-    assert win.width() == cols * fm.averageCharWidth()
+    font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+    font.setPointSize(13)
+    fm = QFontMetrics(font)
+    assert win.width() == cols * fm.horizontalAdvance("W")
     assert win.height() == rows * fm.height()
     win.close()
     win.deleteLater()
@@ -115,16 +119,20 @@ def test_window_opacity_matches_config_RT4_4(qt_app):
 
 
 def test_window_centred_on_screen_RT4_5(qt_app):
-    """RT-4.5: Window geometry is centred relative to primary screen dimensions."""
-    from PySide6.QtGui import QFont, QFontMetrics
+    """RT-4.5: Window geometry is centred relative to primary screen dimensions.
+    Updated in #7: uses system fixed font + horizontalAdvance("W").
+    """
+    from PySide6.QtGui import QFontDatabase, QFontMetrics
 
     cols, rows = 40, 10
     cfg = make_config(width=cols, height=rows, position="center")
     win = LauncherWindow(cfg)
     win.show()
 
-    fm = QFontMetrics(QFont("Menlo", 14))
-    pixel_w = cols * fm.averageCharWidth()
+    font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+    font.setPointSize(13)
+    fm = QFontMetrics(font)
+    pixel_w = cols * fm.horizontalAdvance("W")
     pixel_h = rows * fm.height()
 
     screen = QApplication.primaryScreen()

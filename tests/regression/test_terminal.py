@@ -1,5 +1,6 @@
-# ABOUTME: Regression tests for terminal widget and fzf hosting (issue #5).
-# ABOUTME: Covers pty spawning, display buffer, keyboard forwarding, exit handling.
+# ABOUTME: Regression tests for terminal widget and fzf hosting (issues #5, #7).
+# ABOUTME: Covers pty spawning, display buffer, keyboard forwarding, exit handling,
+# ABOUTME: per-character rendering, colour mapping, and character cell width.
 
 from __future__ import annotations
 
@@ -10,9 +11,16 @@ import time
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
+from PySide6.QtGui import QColor, QFontMetrics
 from PySide6.QtWidgets import QApplication
 
-from fzflauncher.terminal import TerminalWidget
+from fzflauncher.terminal import (
+    _DEFAULT_BG,
+    _DEFAULT_FG,
+    _NAMED_COLOURS,
+    TerminalWidget,
+    _resolve_colour,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -222,3 +230,35 @@ def test_fzf_not_in_path_raises_RT5_11(qt_app):
     w = TerminalWidget(items=ITEMS, fzf_path="/nonexistent/fzf")
     with pytest.raises(FileNotFoundError, match="fzf"):
         w.start()
+
+
+# ---------------------------------------------------------------------------
+# AC7.3 — Correct character cell width and colour mapping (issue #7)
+# ---------------------------------------------------------------------------
+
+
+def test_cell_width_uses_horizontal_advance_RT7_1(qt_app):
+    """RT-7.1: TerminalWidget.cell_width equals horizontalAdvance("W") for its font."""
+    w = TerminalWidget(items=["a"])
+    fm = QFontMetrics(w._font)
+    assert w.cell_width == fm.horizontalAdvance("W")
+
+
+def test_resolve_colour_default_returns_supplied_default_RT7_3():
+    """RT-7.3: _resolve_colour("default", default) returns the supplied default colour."""
+    assert _resolve_colour("default", _DEFAULT_FG) == _DEFAULT_FG
+    assert _resolve_colour("default", _DEFAULT_BG) == _DEFAULT_BG
+
+
+def test_resolve_colour_named_colour_RT7_4():
+    """RT-7.4: _resolve_colour with a named colour returns the correct QColor."""
+    assert _resolve_colour("red", _DEFAULT_FG) == _NAMED_COLOURS["red"]
+    assert _resolve_colour("green", _DEFAULT_FG) == _NAMED_COLOURS["green"]
+    assert _resolve_colour("white", _DEFAULT_BG) == _NAMED_COLOURS["white"]
+
+
+def test_resolve_colour_hex_string_RT7_5():
+    """RT-7.5: _resolve_colour parses a 6-char hex string to the correct QColor."""
+    assert _resolve_colour("ff0000", _DEFAULT_FG) == QColor(255, 0, 0)
+    assert _resolve_colour("00ff00", _DEFAULT_FG) == QColor(0, 255, 0)
+    assert _resolve_colour("64c832", _DEFAULT_FG) == QColor(100, 200, 50)
