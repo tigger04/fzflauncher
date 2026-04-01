@@ -87,10 +87,14 @@ def test_window_has_stays_on_top_hint_RT4_2(window):
 
 def test_window_size_matches_config_RT4_3(qt_app):
     """RT-4.3: Window size matches display.width and display.height from config."""
-    cfg = make_config(width=640, height=320)
+    from PySide6.QtGui import QFont, QFontMetrics
+
+    cols, rows = 80, 20
+    cfg = make_config(width=cols, height=rows)
     win = LauncherWindow(cfg)
-    assert win.width() == 640
-    assert win.height() == 320
+    fm = QFontMetrics(QFont("Menlo", 14))
+    assert win.width() == cols * fm.averageCharWidth()
+    assert win.height() == rows * fm.height()
     win.close()
     win.deleteLater()
 
@@ -112,14 +116,21 @@ def test_window_opacity_matches_config_RT4_4(qt_app):
 
 def test_window_centred_on_screen_RT4_5(qt_app):
     """RT-4.5: Window geometry is centred relative to primary screen dimensions."""
-    cfg = make_config(width=400, height=200, position="center")
+    from PySide6.QtGui import QFont, QFontMetrics
+
+    cols, rows = 40, 10
+    cfg = make_config(width=cols, height=rows, position="center")
     win = LauncherWindow(cfg)
     win.show()
 
+    fm = QFontMetrics(QFont("Menlo", 14))
+    pixel_w = cols * fm.averageCharWidth()
+    pixel_h = rows * fm.height()
+
     screen = QApplication.primaryScreen()
     screen_geo = screen.geometry()
-    expected_x = (screen_geo.width() - 400) // 2 + screen_geo.x()
-    expected_y = (screen_geo.height() - 200) // 2 + screen_geo.y()
+    expected_x = (screen_geo.width() - pixel_w) // 2 + screen_geo.x()
+    expected_y = (screen_geo.height() - pixel_h) // 2 + screen_geo.y()
 
     assert win.x() == expected_x
     assert win.y() == expected_y

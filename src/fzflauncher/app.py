@@ -6,6 +6,7 @@ from __future__ import annotations
 import logging
 
 from PySide6.QtCore import QEvent, Qt
+from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
 
 from fzflauncher.config import Config
@@ -32,7 +33,9 @@ class LauncherWindow(QMainWindow):
             Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
         )
         cfg = self._config.display
-        self.resize(cfg.width, cfg.height)
+        # Config width/height are terminal columns/rows — convert to pixels
+        fm = QFontMetrics(QFont("Menlo", 14))
+        self.resize(cfg.width * fm.averageCharWidth(), cfg.height * fm.height())
         self.setWindowOpacity(cfg.opacity)
         if cfg.position == "center":
             self._center_on_screen()
