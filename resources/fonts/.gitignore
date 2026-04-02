@@ -1,5 +1,2 @@
-# TTF files are built by `make build-fonts` and not committed.
-# Commit them manually once built and verified.
-*.ttf
-*.otf
-*.woff2
+# TTF files are built by `make build-fonts` and committed to the repo.
+# Do not add exclusions here.
