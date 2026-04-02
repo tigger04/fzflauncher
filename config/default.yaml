@@ -16,7 +16,7 @@ display:
   y_offset: 0
 
 fzf:
-  options: "--reverse --border --margin=1,2"
+  options: "--reverse --margin=1,2"
 
 hotkey:
   global: alt+space
