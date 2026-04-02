@@ -41,7 +41,7 @@ class LauncherWindow(QMainWindow):
         cfg = self._config.display
         # Config width/height are terminal columns/rows — convert to pixels
         font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
-        font.setPointSize(13)
+        font.setPointSize(20)
         if self._font_family:
             font.setFamily(self._font_family)
         fm = QFontMetrics(font)

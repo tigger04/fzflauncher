@@ -111,7 +111,7 @@ class TerminalWidget(QWidget):
 
         # System monospace font at a legible size; override family if provided
         self._font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
-        self._font.setPointSize(13)
+        self._font.setPointSize(20)
         if font_family:
             self._font.setFamily(font_family)
 

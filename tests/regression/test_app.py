@@ -95,7 +95,7 @@ def test_window_size_matches_config_RT4_3(qt_app):
     cfg = make_config(width=cols, height=rows)
     win = LauncherWindow(cfg)
     font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
-    font.setPointSize(13)
+    font.setPointSize(20)
     fm = QFontMetrics(font)
     assert win.width() == cols * fm.horizontalAdvance("W")
     assert win.height() == rows * fm.height()
@@ -130,7 +130,7 @@ def test_window_centred_on_screen_RT4_5(qt_app):
     win.show()
 
     font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
-    font.setPointSize(13)
+    font.setPointSize(20)
     fm = QFontMetrics(font)
     pixel_w = cols * fm.horizontalAdvance("W")
     pixel_h = rows * fm.height()
