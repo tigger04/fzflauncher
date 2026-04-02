@@ -50,7 +50,7 @@ def test_load_config_defaults_present_when_no_user_config_RT2_1(
     )
     assert config.paths.applications
     assert isinstance(config.paths.use_bundle_name, bool)
-    assert config.display.opacity == pytest.approx(0.95)
+    assert config.display.opacity == pytest.approx(0.90)
     assert config.display.width == 80
     assert config.display.height == 20
     assert config.display.position == "center"

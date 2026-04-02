@@ -323,6 +323,19 @@ class TerminalWidget(QWidget):
                     painter.setPen(fg)
                     painter.drawText(x, y + ascent, char.data)
 
+        # Draw block cursor at pyte's tracked cursor position
+        cx = self._screen.cursor.x * char_w
+        cy = self._screen.cursor.y * char_h
+        cursor_char = self._screen.buffer[self._screen.cursor.y][self._screen.cursor.x]
+        cur_fg = _resolve_colour(cursor_char.fg, _DEFAULT_FG)
+        cur_bg = _resolve_colour(cursor_char.bg, _DEFAULT_BG)
+        if cursor_char.reverse:
+            cur_fg, cur_bg = cur_bg, cur_fg
+        painter.fillRect(QRect(cx, cy, char_w, char_h), cur_fg)
+        if cursor_char.data and cursor_char.data != " ":
+            painter.setPen(cur_bg)
+            painter.drawText(cx, cy + ascent, cursor_char.data)
+
         painter.end()
 
     @property
