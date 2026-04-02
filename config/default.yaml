@@ -10,7 +10,7 @@ paths:
 display:
   width: 80
   height: 20
-  opacity: 0.95
+  opacity: 0.90
   position: center
   x_offset: 0
   y_offset: 0
